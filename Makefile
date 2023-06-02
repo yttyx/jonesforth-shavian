@@ -26,7 +26,7 @@ run:	jonesforth
 	./jonesforth
 
 clean:
-	@rm -f jonesforth jonesforth.list perf_dupdrop core.* $(TESTDIR)/test.out
+	@rm -f jonesforth jonesforth.o jonesforth.list core.* $(TESTDIR)/test.out
 
 TESTS	:= $(patsubst %.f,%.test,$(wildcard $(TESTDIR)/test_*.f))
 
@@ -38,11 +38,3 @@ tests/test_%.test: $(TESTDIR)/test_%.f jonesforth
 	@diff -u $<.out $(TESTDIR)/test.out
 	@echo "ok"
 	@rm -f $(TESTDIR)/test.out
-
-# Performance - TODO
-
-perf_dupdrop: perf_dupdrop.c
-	gcc -O3 -Wall -Werror -o $@ $<
-
-run_perf_dupdrop: jonesforth
-	cat <(echo ': TEST-MODE ;') jonesforth.f perf_dupdrop.f | ./jonesforth
