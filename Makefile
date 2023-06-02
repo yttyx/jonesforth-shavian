@@ -1,50 +1,48 @@
-# $Id: Makefile,v 1.9 2007-10-22 18:53:12 rich Exp $
+# Makefile for Shavian variant of Jonesforth
 
-#BUILD_ID_NONE := -Wl,--build-id=none 
-BUILD_ID_NONE := 
-
-SHELL	:= /bin/bash
+TESTDIR	:= ./tests
 
 all:	jonesforth
 
-jonesforth: jonesforth.S
-	gcc -m32 -nostdlib -static $(BUILD_ID_NONE) -o $@ $<
+# gcc options:
+# -m32
+# -g - add debugging information
+# -Wa pass options to as (the gnu assembler)
+# as options:
+# -a - turn on listings; qualifiers:
+# 	s - include symbols
+# 	m - expand macros
+# 	l - include assembly 
+# 	h - include high level code 
+# 	L - retain local symbols in the symbol table
 
-run:
-	cat jonesforth.f $(PROG) - | ./jonesforth
+jonesforth: jonesforth.S
+	gcc -m32 -g -nostdlib -static -o $@ $<
+
+list:
+	gcc -m32 -c -Wa,-asmlh,-L jonesforth.S >jonesforth.list
+
+run:	jonesforth
+	./jonesforth
 
 clean:
-	rm -f jonesforth perf_dupdrop *~ core .test_*
+	@rm -f jonesforth jonesforth.list perf_dupdrop core.* $(TESTDIR)/test.out
 
-# Tests.
-
-TESTS	:= $(patsubst %.f,%.test,$(wildcard test_*.f))
+TESTS	:= $(patsubst %.f,%.test,$(wildcard $(TESTDIR)/test_*.f))
 
 test check: $(TESTS)
 
-test_%.test: test_%.f jonesforth
+tests/test_%.test: $(TESTDIR)/test_%.f jonesforth
 	@echo -n "$< ... "
-	@rm -f .$@
-	@cat <(echo ': TEST-MODE ;') jonesforth.f $< <(echo 'TEST') | \
-	  ./jonesforth 2>&1 | \
-	  sed 's/DSP=[0-9]*//g' > .$@
-	@diff -u .$@ $<.out
-	@rm -f .$@
+	@cat $<  <(echo '𐑑𐑧𐑕𐑑') | ./jonesforth -s | sed 's/𐑛𐑕𐑐=[0-9]*//g' > $(TESTDIR)/test.out
+	@diff -u $<.out $(TESTDIR)/test.out
 	@echo "ok"
+	@rm -f $(TESTDIR)/test.out
 
-# Performance.
+# Performance - TODO
 
 perf_dupdrop: perf_dupdrop.c
 	gcc -O3 -Wall -Werror -o $@ $<
 
 run_perf_dupdrop: jonesforth
 	cat <(echo ': TEST-MODE ;') jonesforth.f perf_dupdrop.f | ./jonesforth
-
-.SUFFIXES: .f .test
-.PHONY: test check run run_perf_dupdrop
-
-remote:
-	scp jonesforth.S jonesforth.f rjones@oirase:Desktop/
-	ssh rjones@oirase sh -c '"rm -f Desktop/jonesforth; \
-	  gcc -m32 -nostdlib -static -Wl,-Ttext,0 -o Desktop/jonesforth Desktop/jonesforth.S; \
-	  cat Desktop/jonesforth.f - | Desktop/jonesforth arg1 arg2 arg3"'
